@@ -1,2 +1,4 @@
 # example.adr.editor
-editor of keyboard inptu.
+editor of keyboard input.
+
+- encrypted card data parsing ok.
