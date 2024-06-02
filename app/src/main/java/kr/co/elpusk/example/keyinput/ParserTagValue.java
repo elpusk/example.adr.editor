@@ -4,13 +4,23 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.Queue;
 
+/**
+ * definition of const Paring.
+ */
 interface ParsingConst{
-    int CONST_THE_NUMBER_OF_TRACK = 3;
-    int CONST_SIZE_DATA_FIELD_LENGTH = 4;
-    int CONST_MIN_SIZE_CIPHER_DATA = 3+CONST_SIZE_DATA_FIELD_LENGTH;//e6.e6,e6 and 4 bytes
+    int CONST_THE_NUMBER_OF_TRACK = 3;//the number of ISO tracks
+    int CONST_SIZE_DATA_FIELD_LENGTH = 4;//the length of data size field
+
+    /**
+     * e6.e6,e6 and 4 bytes. triple e6 is only usb keyboard & uart interface.
+     */
+    int CONST_MIN_SIZE_CIPHER_DATA = 3+CONST_SIZE_DATA_FIELD_LENGTH;
 
 }
 
+/**
+ * the definition of Tag
+ */
 interface ParsingTag{
     int CONST_TAG_E6 = 0xe6;
     int CONST_TAG_C = 0x43;//ASCII 'C'
@@ -22,8 +32,16 @@ interface ParsingTag{
     int CONST_TAG_MAC4 = 0xFE;//MAC 4byte
     int CONST_TAG_DISO = 0xFF;//encryption iso track data
 }
+
+/**
+ * Parsing the response of lpu237 encryption mode.
+ * you can use this class for usb-keyboard interface, uart-interface and usb-vendor-hid interface.
+ */
 public class ParserTagValue {
 
+    /**
+     * internal parsing status.
+     */
     private enum Mode {
         mNONE,
         mFCNT,
@@ -37,32 +55,63 @@ public class ParserTagValue {
         mISO3
     }
     private String m_s_input_with_triple_e6 = "";
-    private byte[] m_bin_input_with_triple_e6;
+    private byte[] m_bin_input_with_triple_e6 = new byte[0];
     private int m_n_flash_count = -1;
-    private byte[] m_bin_ksn;
-    private byte[] m_bin_masked_pan;
-    private byte[] m_bin_card_holder_name;
-    private byte[] m_bin_card_expiration_date;
-    private byte[] m_bin_mac_4bytes;
-    private byte[][] m_bins_en_iso;
+    private byte[] m_bin_flash_count = new byte[0];
+    private byte[] m_raw_flash_count = new byte[0];
+    private byte[] m_bin_ksn = new byte[0];
+    private byte[] m_raw_ksn = new byte[0];
+    private byte[] m_bin_masked_pan = new byte[0];
+    private byte[] m_raw_masked_pan = new byte[0];
+    private byte[] m_bin_card_holder_name = new byte[0];
+    private byte[] m_raw_card_holder_name = new byte[0];
+    private byte[] m_bin_card_expiration_date = new byte[0];
+    private byte[] m_raw_card_expiration_date = new byte[0];
+    private byte[] m_bin_mac_4bytes = new byte[0];
+    private byte[] m_raw_mac_4bytes = new byte[0];
+    private byte[][] m_bins_en_iso = new byte[ParsingConst.CONST_THE_NUMBER_OF_TRACK][0];
+    private byte[][] m_raw_en_iso = new byte[ParsingConst.CONST_THE_NUMBER_OF_TRACK][0];
     private boolean m_b_parsable = false;
+
+    /**
+     * the default constructor is disabled. !
+     */
     private ParserTagValue(){
 
     }
+
+    /**
+     * constructor for usb-keyboard interface & uart-interface in encryption mode.
+     * @param s_input_without_triple_e6 : response of  usb-keyboard interface & uart-interface.
+     */
     public ParserTagValue(String s_input_without_triple_e6){
         m_s_input_with_triple_e6 = Tools.add_e6_triple(s_input_without_triple_e6);
         m_bin_input_with_triple_e6 = Tools.get_binary_from_hex_string(m_s_input_with_triple_e6);
         m_b_parsable = _parsing();
     }
+
+    /**
+     * constructor for usb-vendor hid interface in encryption mode.
+     * @param s_input_with_triple_e6
+     */
     public ParserTagValue(byte[] s_input_with_triple_e6) {
         m_bin_input_with_triple_e6 = s_input_with_triple_e6;
         m_s_input_with_triple_e6 = Tools.get_hex_string_from_binary(m_bin_input_with_triple_e6);
         m_b_parsable = _parsing();
     }
 
+    /**
+     * get parsing result
+     * @return true : success, false : error
+     */
     public boolean is_parsable(){
         return m_b_parsable;
     }
+
+    /**
+     * parsing encrypted response.
+     * @return true : success, false : error
+     */
     private boolean _parsing()
     {
         boolean b_result = false;
@@ -175,7 +224,9 @@ public class ParserTagValue {
                             b_result = false;
                             break;//exit while with error
                         }
+                        m_bin_flash_count = Tools.get_binary_from_hex_string_byte_array(b);
                         m_n_flash_count = Tools.get_unsigned_int_from_8bytes_little_endian(b);
+                        m_raw_flash_count = b;
                         if(m_n_flash_count<0){
                             b_result = false;
                             break;//exit while with error
@@ -187,15 +238,19 @@ public class ParserTagValue {
                             break;//exit while with error
                         }
                         m_bin_ksn = Tools.get_binary_from_hex_string_byte_array(b);
+                        m_raw_ksn = b;
                     }
                     else if(mode==Mode.mMPAN){//mandatory but none when card isn't credit card.
                         m_bin_masked_pan = Tools.get_binary_from_hex_string_byte_array(b);
+                        m_raw_masked_pan = b;
                     }
                     else if(mode==Mode.mCHN){//option
                         m_bin_card_holder_name = Tools.get_binary_from_hex_string_byte_array(b);
+                        m_raw_card_holder_name = b;
                     }
                     else if(mode==Mode.mCED){//option
                         m_bin_card_expiration_date = Tools.get_binary_from_hex_string_byte_array(b);
+                        m_raw_card_expiration_date = b;
                     }
                     else if(mode==Mode.mMAC4){
                         if( b == null ){
@@ -203,19 +258,25 @@ public class ParserTagValue {
                             break;//exit while with error
                         }
                         m_bin_mac_4bytes = Tools.get_binary_from_hex_string_byte_array(b);
+                        m_raw_mac_4bytes = b;
                     }
                     else if(mode==Mode.mISO1 || mode==Mode.mISO2 || mode==Mode.mISO3){
                         if( m_bins_en_iso == null ){
-                            m_bins_en_iso = new byte[ParsingConst.CONST_THE_NUMBER_OF_TRACK][n_index];
+                            m_bins_en_iso = new byte[ParsingConst.CONST_THE_NUMBER_OF_TRACK][0];
+                            m_raw_en_iso = new byte[ParsingConst.CONST_THE_NUMBER_OF_TRACK][0];
                         }
                         if(b == null ){
-                            m_bins_en_iso[n_index] = null;//none track data
+                            m_bins_en_iso[n_index] = new byte[0];//none track data
+                            m_raw_en_iso[n_index] = new byte[0];//none track data
                         }
                         else {
                             byte[] cb = Tools.get_binary_from_hex_string_byte_array(b);
                             if(cb != null) {
                                 m_bins_en_iso[n_index] = new byte[cb.length];
                                 System.arraycopy(cb, 0, m_bins_en_iso[n_index], 0, cb.length);
+
+                                m_raw_en_iso[n_index] = new byte[b.length];
+                                System.arraycopy(b, 0, m_raw_en_iso[n_index], 0, b.length);
                             }
                             else {
                                 b_result = false;
@@ -298,6 +359,7 @@ public class ParserTagValue {
             byte[] b = Tools.get_byte_array_from_queue(item_q);//get value from item buffer
             if(b!=null){
                 m_bin_mac_4bytes = Tools.get_binary_from_hex_string_byte_array(b);
+                m_raw_mac_4bytes = b;
             }
         }
         return b_result;
@@ -326,13 +388,75 @@ public class ParserTagValue {
         }//end switch
         return b_result;
     }
+
+    /**
+     * get raw data except MAC 4bytes from response.
+     * @param b_enable_CHN
+     * @param b_enable_CED
+     * @return binary data.
+     */
+    public byte[] get_raw_data_except_mac(boolean b_enable_CHN,boolean b_enable_CED){
+        Queue<Byte> q = new LinkedList<>();
+        //
+        if( !m_b_parsable){
+            return new byte[0];
+        }
+        //
+        q.offer((byte)(0xff&ParsingTag.CONST_TAG_C));
+
+        q.offer((byte)(0xff&ParsingTag.CONST_TAG_FCNT));
+        Tools.push_back_bytes_to_queue(m_raw_flash_count,q);
+
+        q.offer((byte)(0xff&ParsingTag.CONST_TAG_KSN));
+        Tools.push_back_bytes_to_queue(m_raw_ksn,q);
+
+        q.offer((byte)(0xff&ParsingTag.CONST_TAG_MPAN));
+        Tools.push_back_bytes_to_queue(m_raw_masked_pan,q);
+
+        if(b_enable_CHN){
+            q.offer((byte)(0xff&ParsingTag.CONST_TAG_CHN));
+        }
+        if(m_bin_card_holder_name.length>0){
+            Tools.push_back_bytes_to_queue(m_raw_card_holder_name,q);
+        }
+
+        if(b_enable_CED){
+            q.offer((byte)(0xff&ParsingTag.CONST_TAG_CED));
+        }
+        if(m_bin_card_expiration_date.length>0){
+            Tools.push_back_bytes_to_queue(m_raw_card_expiration_date,q);
+        }
+
+        for(int i=0; i<ParsingConst.CONST_THE_NUMBER_OF_TRACK; i++) {
+            q.offer((byte) (0xff & ParsingTag.CONST_TAG_DISO));
+            Tools.push_back_bytes_to_queue(m_raw_en_iso[i], q);
+        }//end for
+
+        q.offer((byte)(0xff&ParsingTag.CONST_TAG_MAC4));
+
+        byte[] b = Tools.get_byte_array_from_queue(q);
+        return b;
+    }
+
     /**
      * get flash memory write count
      * @return int type write count.
      */
-    public int get_flash_count(){
+    public int get_flash_count_by_int(){
         return m_n_flash_count;
     }
+
+    public byte[] get_flash_count(){
+        return m_bin_flash_count;
+    }
+    public byte[] get_raw_flash_count(){
+        return m_raw_flash_count;
+    }
+
+    /**
+     * get Key serial number
+     * @return binary type KSN.
+     */
     public byte[] get_ksn(){
         return m_bin_ksn;
     }
@@ -344,6 +468,14 @@ public class ParserTagValue {
         }
         return s_out;
     }
+
+    public byte[] get_raw_ksn(){
+        return m_raw_ksn;
+    }
+    /**
+     * get Masked Primary Account Number.
+     * @return binary type MPAN(Masked Primary Account Number)
+     */
     public byte[] get_mpan(){
         return m_bin_masked_pan;
     }
@@ -355,7 +487,14 @@ public class ParserTagValue {
         }
         return s_out;
     }
+    public byte[] get_raw_mpan(){
+        return m_raw_masked_pan;
+    }
 
+    /**
+     * get Card Holder Name.
+     * @return binary type CHN(Card Holder Name)
+     */
     public byte[] get_chn(){
         return m_bin_card_holder_name;
     }
@@ -367,6 +506,14 @@ public class ParserTagValue {
         }
         return s_out;
     }
+    public byte[] get_raw_chn(){
+        return m_raw_card_holder_name;
+    }
+
+    /**
+     * get Card Expiration Date.
+     * @return binary type CED(Card Expiration Date)
+     */
     public byte[] get_ced(){
         return m_bin_card_expiration_date;
     }
@@ -378,9 +525,18 @@ public class ParserTagValue {
         }
         return s_out;
     }
+    public byte[] get_raw_ced(){
+        return m_raw_card_expiration_date;
+    }
+
+    /**
+     * get 4 bytes Message Authentication Code.
+     * @return binary type MAC4(Message Authentication Code)
+     */
     public byte[] get_mac4(){
         return m_bin_mac_4bytes;
     }
+
     public String get_mac4_by_string(){
         String s_out="";
 
@@ -389,9 +545,18 @@ public class ParserTagValue {
         }
         return s_out;
     }
+    public byte[] get_raw_mac_4bytes(){
+        return m_raw_mac_4bytes;
+    }
 
-    public byte[] get_track_data(int n_track){
-        byte[] bin = null;
+    /**
+     * get plaintext length + encrypted track data.
+     * @param n_track : 0~2 ([0,1,2] = [1,2,3] track)
+     * @return the first byte : the size of the decrypted data.(127 ~ -128)
+     * from second bytes : encrypted track data.
+     */
+    public byte[] get_encrypted_track_data(int n_track){
+        byte[] bin = new byte[0];
         do{
             if(n_track<0 || n_track>=ParsingConst.CONST_THE_NUMBER_OF_TRACK){
                 continue;
@@ -405,14 +570,23 @@ public class ParserTagValue {
             if(m_bins_en_iso[n_track] == null){
                 continue;
             }
+            if(m_bins_en_iso[n_track].length <=0){
+                continue;
+            }
+
             bin = new byte[m_bins_en_iso[n_track].length];
             System.arraycopy(m_bins_en_iso[n_track],0,bin,0,bin.length);
         }while(false);
         return bin;
     }
 
-    public String get_track_data_by_string(int n_track){
-        byte[] bin = get_track_data(n_track);
+    /**
+     * get hex string the return of get_encrypted_track_data() method.
+     * @param n_track : 0~2 ([0,1,2] = [1,2,3] track)
+     * @return String type, hex string the return of get_encrypted_track_data() method.
+     */
+    public String get_encrypted_track_data_by_string(int n_track){
+        byte[] bin = get_encrypted_track_data(n_track);
         if(bin != null){
             return Tools.get_hex_string_from_binary(bin);
         }
@@ -420,5 +594,8 @@ public class ParserTagValue {
             return "";
         }
     }
+    public byte[] get_raw_encrypted_track_data(int n_track){
+        return m_raw_en_iso[n_track];
+    }
 
-}
+}//the end of class

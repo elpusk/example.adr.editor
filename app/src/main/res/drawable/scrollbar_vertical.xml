@@ -1,0 +1,9 @@
+<!-- res/drawable/scrollbar_vertical.xml -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="20dp" />
+            <solid android:color="#B0BEC5" />
+        </shape>
+    </item>
+</layer-list>

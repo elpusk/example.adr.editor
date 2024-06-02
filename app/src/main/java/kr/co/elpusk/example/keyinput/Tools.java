@@ -3,6 +3,49 @@ package kr.co.elpusk.example.keyinput;
 import java.util.Queue;
 
 public class Tools {
+    static public boolean is_equal_bytes(byte[] b0,byte[] b1){
+        boolean b_equal = false;
+
+        do{
+            if(b0 == null && b1 != null){
+                continue;
+            }
+            if(b0 != null && b1 == null){
+                continue;
+            }
+
+            if(b0.length != b1.length){
+                continue;
+            }
+
+            b_equal = true;
+            if(b0 == null && b1 == null ){
+                continue;
+            }
+
+            for(int i=0; i<b0.length; i++){
+                if(b0[i] != b1[i]){
+                    b_equal = false;
+                    break;
+                }
+            }
+        }while(false);
+        return b_equal;
+    }
+    static public byte byte_op_right_shift(byte c,int n_shift){
+        int n_c = 0xff & c;//to unsigned
+        n_c >>>= n_shift;
+        return (byte)n_c;
+    }
+
+    static public void push_back_bytes_to_queue(byte[] src,Queue<Byte> q){
+        if(src != null && q != null){
+            for(int i=0; i<src.length; i++ ) {
+                q.offer(src[i]);
+            }//end for
+        }
+    }
+
     /**
      * Queue<Byte>의 요소를 byte 배열로 변환하는 메서드
      *
@@ -10,13 +53,14 @@ public class Tools {
      * @return byte 배열
      */
     static public byte[] get_byte_array_from_queue(Queue<Byte> queue) {
+        byte[] byteArray = new byte[0];
         if(queue == null){
-            return null;
+            return byteArray;
         }
         if(queue.isEmpty()){
-            return null;
+            return byteArray;
         }
-        byte[] byteArray = new byte[queue.size()];
+        byteArray = new byte[queue.size()];
         int index = 0;
         for (Byte b : queue) {
             byteArray[index++] = b.byteValue();
@@ -151,6 +195,10 @@ public class Tools {
             }//end for
 
         }while(false);
+
+        if(bin == null){
+            bin = new byte[0];
+        }
         return bin;
     }
 
